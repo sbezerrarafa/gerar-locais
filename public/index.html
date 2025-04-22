@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Busca de Locais</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+
+    input,
+    button {
+      padding: 10px;
+      margin-right: 10px;
+    }
+
+    h2 {
+      margin-top: 30px;
+    }
+
+    ul {
+      padding: 0;
+      list-style: none;
+    }
+
+    li {
+      margin-bottom: 15px;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 10px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Buscar bares, restaurantes e casas de eventos</h1>
+  <input type="text" id="city" placeholder="Digite a cidade (ex: Recife)">
+  <button onclick="buscarLocais()">Buscar</button>
+
+  <div id="resultados"></div>
+
+  <script>
+    async function buscarLocais() {
+      const cidade = document.getElementById('city').value;
+      const tipos = [
+        { tipo: 'bar', titulo: '🍻 Bares' },
+        { tipo: 'restaurant', titulo: '🍽 Restaurantes' },
+        { tipo: 'night_club', titulo: '🎉 Casas de Eventos' }
+      ];
+      const resultadosEl = document.getElementById('resultados');
+      resultadosEl.innerHTML = 'Buscando...';
+
+      let html = '';
+
+      for (const { tipo, titulo } of tipos) {
+        const url = `/api/places?cidade=${encodeURIComponent(cidade)}&tipo=${tipo}`;
+        try {
+          const res = await fetch(url);
+          const data = await res.json();
+
+          if (data.status === 'OK') {
+            html += `<h2>${titulo}</h2><ul>`;
+            data.results.forEach(item => {
+              html += `
+                <li>
+                  <strong>${item.name}</strong><br>
+                  ${item.formatted_address}<br>
+                  <p><strong>Latitude:</strong> ${item.geometry.location.lat}</p>
+                  <p><strong>Longitude:</strong> ${item.geometry.location.lng}</p>
+                  ${item.rating ? `⭐ ${item.rating} (${item.user_ratings_total} avaliações)<br>` : ''}
+                  ${item.opening_hours ? `⏱ Está ${item.opening_hours.open_now ? '<b style="color:green">aberto</b>' : '<b style="color:red">fechado</b>'}<br>` : ''}
+                  <a href="https://www.google.com/maps/search/?api=1&query=${item.geometry.location.lat},${item.geometry.location.lng}" target="_blank">
+                    Ver no mapa
+                  </a>
+                </li>
+              `;
+            });
+
+
+            html += '</ul>';
+          } else {
+            html += `<h2>${titulo}</h2><p>Erro: ${data.status}</p>`;
+          }
+        } catch (e) {
+          html += `<p>Erro ao buscar ${titulo}: ${e.message}</p>`;
+        }
+      }
+
+      resultadosEl.innerHTML = html;
+    }
+  </script>
+
+</body>
+
+</html>
