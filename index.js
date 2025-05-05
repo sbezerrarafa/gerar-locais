@@ -19,12 +19,36 @@ app.get('/api/places', async (req, res) => {
   }
 
   const query = `${tipo} em ${cidade}`;
-  const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=${apiKey}`;
+  const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=${apiKey}&language=pt-BR`;
 
   try {
     const response = await axios.get(url);
-    console.log(`Resultados para ${tipo} em ${cidade}:`, response.data.results);
-    res.json(response.data);
+    const resultados = response.data.results;
+
+    const detalhados = [];
+
+    for (const item of resultados) {
+      const detailUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${item.place_id}&fields=name,formatted_address,geometry,opening_hours,editorial_summary&key=${apiKey}&language=pt-BR`;
+
+
+      const detailRes = await axios.get(detailUrl);
+      const detalhe = detailRes.data.result;
+
+      detalhados.push({
+        name: detalhe.name,
+        formatted_address: detalhe.formatted_address,
+        geometry: detalhe.geometry,
+        opening_hours: detalhe.opening_hours,
+        place_id: item.place_id,
+        rating: item.rating,
+        user_ratings_total: item.user_ratings_total,
+        descricao: detalhe.editorial_summary?.overview || `${detalhe.name}, localizado em ${detalhe.formatted_address}.`
+      });
+
+      await new Promise(r => setTimeout(r, 200)); // evita limite de rate
+    }
+
+    res.json({ status: 'OK', results: detalhados });
   } catch (error) {
     console.error('Erro ao buscar lugares:', error.message);
     res.status(500).json({ error: 'Erro ao consultar o Google Places API' });
